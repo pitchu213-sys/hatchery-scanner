@@ -28,22 +28,24 @@ export default function Step1Reception() {
 
     setCreating(true)
     try {
-      // 1. Check if lot exists, or insert into lots table
-      const { data, error } = await supabase
-        .from('lots')
-        .insert({
-          code_rotation: lotCode.trim(),
-          reception_date: receptionDate,
+      // Create lot via secure server route (bypasses RLS and uses exact DB columns)
+      const res = await fetch('/api/lots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lotCode: lotCode.trim(),
+          receptionDate: receptionDate,
+          origin: origin || 'Ferme Élevage',
           strain: strain,
-          age_weeks: Number(ageWeeks),
-          received_qty: Number(quantity),
-          accepted_qty: Number(quantity),
-          batiment: origin || 'Ferme Élevage',
-          created_at: new Date().toISOString()
+          ageWeeks: Number(ageWeeks) || 32,
+          quantity: Number(quantity)
         })
-        .select()
+      })
 
-      if (error) throw error
+      const result = await res.json()
+      if (!res.ok || result.error) {
+        throw new Error(result.error || 'Erreur lors de la création du lot')
+      }
 
       playScanBeep(1200, 0.15)
       setCreatedLotCode(lotCode.trim())

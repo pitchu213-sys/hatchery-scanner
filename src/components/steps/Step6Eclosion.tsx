@@ -185,25 +185,15 @@ export default function Step6Eclosion() {
     setSaving(true)
 
     try {
-      // Loop over lots and insert into eclosions table
-      for (const lot of lotsData) {
-        if (!lot.lotId.startsWith('demo-')) {
-          try {
-            await supabase
-              .from('eclosions')
-              .insert([
-                {
-                  lot_id: lot.lotId,
-                  eclosion_date: eclosionDate,
-                  chicks_hatched: lot.poussins1erChoix,
-                  dead_in_shell: lot.mortsEnCoquille,
-                  pipped: lot.bechesNonEclos,
-                  contaminated: lot.poussins2emeChoix
-                }
-              ])
-          } catch (_) {}
-        }
-      }
+      // Save eclosion via API route
+      await fetch('/api/eclosion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lotsData,
+          eclosionDate,
+        }),
+      })
 
       playScanBeep()
       setSuccessMsg(

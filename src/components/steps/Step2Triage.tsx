@@ -45,19 +45,14 @@ export default function Step2Triage() {
     playScanBeep()
 
     try {
-      // Find lot in supabase
-      const { data, error } = await supabase
-        .from('lots')
-        .select('*')
-        .or(`code_rotation.eq.${code.trim()},code_rotation.eq.${cleanCode}`)
-        .limit(1)
+      // Find lot via secure API route
+      const res = await fetch(`/api/lots?code=${encodeURIComponent(code.trim())}`)
+      const resData = await res.json()
+      const lot = resData?.lot
 
-      if (error) throw error
-
-      if (data && data.length > 0) {
-        const lot = data[0]
+      if (lot) {
         setLotData(lot)
-        const qty = lot.received_qty || lot.accepted_qty || 3000
+        const qty = lot.accepted_qty || lot.received_qty || 3000
         setAcceptedQty(qty)
         setRejectedQty(0)
 
@@ -128,19 +123,21 @@ export default function Step2Triage() {
     setSavingTriage(true)
 
     try {
-      // 1. Insert into triages table
-      const { data: triageInsert, error: triageError } = await supabase
-        .from('triages')
-        .insert({
-          lot_id: lotData.id,
-          triage_date: new Date().toISOString().split('T')[0],
-          incube: acceptedQty,
-          ecart: rejectedQty,
-          created_at: new Date().toISOString()
-        })
-        .select()
+      const res = await fetch('/api/triage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lotId: lotData.id,
+          acceptedQty,
+          rejectedQty,
+          chariots,
+        }),
+      })
 
-      if (triageError) throw triageError
+      const resData = await res.json()
+      if (!res.ok || resData.error) {
+        throw new Error(resData.error || 'Erreur lors du triage')
+      }
 
       playScanBeep(1200, 0.2)
       alert(`Triage validé ! ${chariots.length} chariot(s) créés avec succès. Vous pouvez maintenant afficher leurs QR Codes.`)
